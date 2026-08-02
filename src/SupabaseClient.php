@@ -61,4 +61,35 @@ class SupabaseClient
         $resposta = $this->http->post("rpc/$funcao", ['json' => $parametros]);
         return json_decode((string) $resposta->getBody(), true);
     }
+
+    /**
+     * Cria um usuário de login (auth.users) direto, via API
+     * administrativa do Supabase -- só funciona com a service_role
+     * key, nunca com a anon key. É o que permite o admin cadastrar
+     * um entregador/cliente sem essa pessoa precisar se cadastrar
+     * sozinha primeiro.
+     */
+    public function criarUsuarioAuth(string $email, string $senha, string $nome): array
+    {
+        $resposta = $this->http->post($this->baseUrlAuth() . '/admin/users', [
+            'headers' => [
+                'apikey' => $_ENV['SUPABASE_SERVICE_ROLE_KEY'],
+                'Authorization' => 'Bearer ' . $_ENV['SUPABASE_SERVICE_ROLE_KEY'],
+                'Content-Type' => 'application/json',
+            ],
+            'json' => [
+                'email' => $email,
+                'password' => $senha,
+                'email_confirm' => true,
+                'user_metadata' => ['nome' => $nome],
+            ],
+        ]);
+
+        return json_decode((string) $resposta->getBody(), true);
+    }
+
+    private function baseUrlAuth(): string
+    {
+        return rtrim($_ENV['SUPABASE_URL'], '/') . '/auth/v1';
+    }
 }

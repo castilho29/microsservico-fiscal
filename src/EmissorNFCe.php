@@ -83,22 +83,24 @@ class EmissorNFCe
             'versao' => '4.00',
         ]);
 
+        $numeroNota = $this->db->rpc('proximo_numero_nfce', ['p_serie' => 1]);
+
         $make->tagide((object) [
             'cUF' => 15, // codigo IBGE do Para
             'natOp' => 'Venda de mercadoria',
             'mod' => 65,
             'serie' => 1,
-            'nNF' => $pedido['numero_nota'] ?? 1, // TODO: controlar numeracao sequencial
+            'nNF' => $numeroNota,
             'dhEmi' => date('Y-m-d\TH:i:sP'),
             'tpNF' => 1,
             'idDest' => 1,
-            'cMunFG' => 1501402, // TODO: codigo IBGE do municipio do mercado
+            'cMunFG' => (int) $_ENV['NFE_MUNICIPIO_CODIGO_IBGE'],
             'tpImp' => 4,
             'tpEmis' => 1,
             'tpAmb' => (int) $_ENV['NFE_AMBIENTE'],
             'finNFe' => 1,
             'indFinal' => 1,
-            'indPres' => 1, // venda presencial? ajustar se for so entrega
+            'indPres' => 1,
             'procEmi' => 0,
             'verProc' => '1.0.0',
         ]);
@@ -110,7 +112,17 @@ class EmissorNFCe
             'CRT' => 1, // TODO: ajustar regime tributario real (1=Simples Nacional)
         ]);
 
-        // TODO: tagenderEmit com o endereco do mercado
+        $make->tagenderEmit((object) [
+            'xLgr' => $_ENV['NFE_ENDERECO_LOGRADOURO'],
+            'nro' => $_ENV['NFE_ENDERECO_NUMERO'],
+            'xBairro' => $_ENV['NFE_ENDERECO_BAIRRO'],
+            'cMun' => (int) $_ENV['NFE_MUNICIPIO_CODIGO_IBGE'],
+            'xMun' => $_ENV['NFE_MUNICIPIO_NOME'],
+            'UF' => $_ENV['NFE_UF'],
+            'CEP' => preg_replace('/\D/', '', $_ENV['NFE_ENDERECO_CEP']),
+            'cPais' => 1058,
+            'xPais' => 'Brasil',
+        ]);
 
         $itemNumero = 1;
         $valorTotal = 0;
@@ -169,8 +181,15 @@ class EmissorNFCe
             'vTroco' => 0,
         ]);
 
+        $codigoPagamento = match ($pedido['forma_pagamento'] ?? 'dinheiro') {
+            'dinheiro' => '01',
+            'cartao' => '03', // cartão de crédito -- o pedido não distingue crédito/débito ainda
+            'pix' => '17',
+            default => '99', // outros
+        };
+
         $make->tagdetPag((object) [
-            'tPag' => '01', // TODO: mapear forma de pagamento real do pedido
+            'tPag' => $codigoPagamento,
             'vPag' => $valorTotal,
         ]);
 
